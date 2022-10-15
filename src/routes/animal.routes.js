@@ -1,74 +1,64 @@
 const express = require('express');
 const router = express.Router();
+const { Animal } = require('./../models');
 
-const db = [];
-
-router.post('/pop', (req, res) => {
-    req.body.arr.forEach((element) => {
-        let x = db.length;
-        const data = {
-            key: x,
-            name: element.name,
-        };
-        db.push(data);
-    });
-    res.status(201).send();
+router.get('/', async (req, res) => {
+    let all = await Animal.find();
+    res.send(all);
 });
 
-router.get('/', (req, res) => {
-    res.send(db);
-});
-
-router.post('/', (req, res) => {
-    if (req.body.hasOwnProperty('name')) {
-        let x = db.length;
-        const data = {
-            key: x,
-            name: req.body.name,
-        };
-        db.push(data);
-        res.status(201).send(data);
+router.post('/', async (req, res) => {
+    if (req.body.hasOwnProperty('name') && req.body.hasOwnProperty('weight')) {
+        try {
+            let animal = await Animal.create(req.body);
+            res.status(201).send(animal);
+        } catch (e) {
+            res.status(400).send(e);
+        }
     } else {
         res.status(404).send({ error: 'values not found' });
     }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
     const id = req.params.id;
 
-    let index = db.findIndex((animal) => animal.key === +id);
-    console.log(index);
-    if (index < 0) {
-        res.status(404).send({ error: 'id not found in database' });
-    } else {
-        res.send(db[index]);
+    let animal = await Animal.findById(id);
+    if (animal) {
+        res.send(animal);
+        return;
+    }
+    res.send('not found');
+});
+
+router.patch('/:id', async (req, res) => {
+    const id = req.params.id;
+
+    let animal = await Animal.findById(id);
+
+    if (!animal) {
+        res.status(404).send('id not found');
+        return;
+    }
+    if (req.body.name) animal.name = req.body.name;
+
+    if (req.body.weight) animal.weight = req.body.weight;
+
+    try {
+        await animal.save();
+        res.send(animal);
+    } catch (e) {
+        res.send(e);
     }
 });
 
-router.patch('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
     const id = req.params.id;
-    const name = req.body.name;
-
-    let index = db.findIndex((animal) => animal.key === +id);
-
-    if (index < 0) {
+    try {
+        let deleted = await Animal.findByIdAndDelete(id);
+        res.send(deleted);
+    } catch (e) {
         res.status(404).send({ error: 'id not found in database' });
-    } else {
-        db[index].name = name;
-        res.send(db[index]);
-    }
-});
-
-router.delete('/:id', (req, res) => {
-    const id = req.params.id;
-
-    let index = db.findIndex((animal) => animal.key === +id);
-
-    if (index < 0) {
-        res.status(404).send({ error: 'id not found in database' });
-    } else {
-        let removed = db.splice(index, 1);
-        res.send(removed);
     }
 });
 
